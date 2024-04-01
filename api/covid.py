@@ -1,127 +1,61 @@
-from contextlib import nullcontext
-from flask import Blueprint, jsonify  # jsonify creates an endpoint response object
-from flask_restful import Api, Resource # used for REST API building
-import requests  # used for testing 
-import time
+from flask import Blueprint, jsonify, Flask, request
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import OneHotEncoder
+from flask_restful import Api, Resource
+from sklearn.linear_model import LogisticRegression
 
-# Blueprints enable python code to be organized in multiple files and directories https://flask.palletsprojects.com/en/2.2.x/blueprints/
-covid_api = Blueprint('covid_api', __name__,
-                   url_prefix='/api/covid')
-
-# API generator https://flask-restful.readthedocs.io/en/latest/api.html#id1
+app = Flask(__name__)
+covid_api = Blueprint('covid_api', __name__, url_prefix='/api/covid')
 api = Api(covid_api)
 
-"""Time Keeper
-Returns:
-    Boolean: is it time to update?
-"""
-def updateTime():
-    global last_run  # the last_run global is preserved between calls to function
-    try: last_run
-    except: last_run = None
-    
-    # initialize last_run data
-    if last_run is None:
-        last_run = time.time()
-        return True
-    
-    # calculate time since last update
-    elapsed = time.time() - last_run
-    if elapsed > 86400:  # update every 24 hours
-        last_run = time.time()
-        return True
-    
-    return False
+# Assuming we have preprocessed COVID data similar to the Titanic dataset preparation
+# For this example, let's say we have the following features: new_cases, total_cases, recovery_rate, vaccination_rate
+# The target variable is risk_level (High, Medium, Low) encoded as 2, 1, 0 respectively
 
-"""API Handler
-Returns:
-    String: API response
-"""   
-def getCovidAPI():
-    global covid_data  # the covid_data global is preserved between calls to function
-    try: covid_data
-    except: covid_data = None
+# Mock dataset - in a real scenario, you would load this from a CSV or database
+covid_data = pd.DataFrame({
+    'new_cases': [100, 500, 1000],
+    'total_cases': [1000, 5000, 10000],
+    'recovery_rate': [0.8, 0.5, 0.3],
+    'vaccination_rate': [0.7, 0.6, 0.4],
+    'risk_level': [0, 1, 2]  # 0=Low, 1=Medium, 2=High
+})
 
-    """
-    Preserve Service usage / speed time with a Reasonable refresh delay
-    """
-    if updateTime(): # request Covid data
-        """
-        RapidAPI is the world's largest API Marketplace. 
-        Developers use Rapid API to discover and connect to thousands of APIs. 
-        """
-        url = "https://corona-virus-world-and-india-data.p.rapidapi.com/api"
-        headers = {
-            'x-rapidapi-key': "dec069b877msh0d9d0827664078cp1a18fajsn2afac35ae063",
-            'x-rapidapi-host': "corona-virus-world-and-india-data.p.rapidapi.com"
-        }
-        response = requests.request("GET", url, headers=headers)
-        covid_data = response
-    else:  # Request Covid Data
-        response = covid_data
+# Split the data into features and target
+X = covid_data.drop('risk_level', axis=1)
+y = covid_data['risk_level']
 
-    return response
+# Train the logistic regression model
+logreg = LogisticRegression()
+logreg.fit(X, y)
 
+class PredictRiskLevel(Resource):
+    def post(self):
+        try:
+            data = request.get_json()
+            country_data = pd.DataFrame([data])
+            
+            # Predict the risk level for the provided country data
+            risk_level_pred = logreg.predict(country_data)
+            risk_level_proba = logreg.predict_proba(country_data)
+            
+            # Decode the risk level
+            risk_levels = {0: 'Low', 1: 'Medium', 2: 'High'}
+            risk_level = risk_levels[risk_level_pred[0]]
+            
+            return {
+                'risk_level': risk_level,
+                'probabilities': {
+                    'Low': risk_level_proba[0][0] * 100,
+                    'Medium': risk_level_proba[0][1] * 100,
+                    'High': risk_level_proba[0][2] * 100
+                }
+            }, 200
+        except Exception as e:
+            return {'error': str(e)}, 400
 
-"""API with Country Filter
-Returns:
-    String: Filter of API response
-"""   
-def getCountry(filter):
-    # Request Covid Data
-    response = getCovidAPI()
-    # Look for Country    
-    countries = response.json().get('countries_stat')
-    for country in countries:  # countries is a list
-        if country["country_name"].lower() == filter.lower():  # this filters for country
-            return country
-    
-    return {"message": filter + " not found"}
+api.add_resource(PredictRiskLevel, '/predict_risk_level')
 
-
-"""Defines API Resources 
-  URLs are defined with api.add_resource
-"""   
-class CovidAPI:
-    """API Method to GET all Covid Data"""
-    class _Read(Resource):
-        def get(self):
-            return getCovidAPI().json()
-        
-    """API Method to GET Covid Data for a Specific Country"""
-    class _ReadCountry(Resource):
-        def get(self, filter):
-            return jsonify(getCountry(filter))
-    
-    # resource is called an endpoint: base usr + prefix + endpoint
-    api.add_resource(_Read, '/')
-    api.add_resource(_ReadCountry, '/<string:filter>')
-
-
-"""Main or Tester Condition 
-  This code only runs when this file is "played" directly
-"""        
-if __name__ == "__main__": 
-    """
-    Using this test code is how I built the backend logic around this API.  
-    There were at least 10 debugging session, on handling updateTime.
-    """
-    
-    print("-"*30) # cosmetic separator
-
-    # This code looks for "world data"
-    response = getCovidAPI()
-    print("World Totals")
-    world = response.json().get('world_total')  # turn response to json() so we can extract "world_total"
-    for key, value in world.items():  # this finds key, value pairs in country
-        print(key, value)
-
-    print("-"*30)
-
-    # This code looks for USA in "countries_stats"
-    country = getCountry("USA")
-    print("USA Totals")
-    for key, value in country.items():
-        print(key, value)
-        
-    print("-"*30)
+if __name__ == "__main__":
+    app.run(debug=True)
