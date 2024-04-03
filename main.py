@@ -16,6 +16,7 @@ from api.user import user_api # Blueprint import api definition
 from api.CharClass import classes_api
 from api.CurrentChar import currentchar_api
 from api.ML import ml_bp
+from api.DS import ds_bp
 from api.player import player_api
 from api.titanic import titanic_api
 
@@ -25,6 +26,7 @@ from model.classes import initCharClasses
 from model.players import initPlayers
 from model.CurrentChars import initCurrentChars
 from model.ML import init_ml
+from model.DS import init_DS
 
 # setup App pages
 from projects.projects import app_projects # Blueprint directory import projects definition
@@ -40,6 +42,7 @@ app.register_blueprint(user_api) # register api routes
 app.register_blueprint(classes_api)
 app.register_blueprint(currentchar_api)
 app.register_blueprint(ml_bp)
+app.register_blueprint(ds_bp)
 app.register_blueprint(player_api)
 app.register_blueprint(app_projects) # register app pages
 
@@ -74,6 +77,7 @@ def generate_data():
     initCharClasses()
     initCurrentChars()
     init_ml()
+    init_DS()
 
 # Register the custom command group with the Flask application
 app.cli.add_command(custom_cli)
