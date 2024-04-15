@@ -1,4 +1,4 @@
-from flask import Blueprint, request
+from flask import Blueprint, request, jsonify, Flask
 from flask_restful import Api, Resource, reqparse
 from __init__ import db
 from model.DS import DS
@@ -107,4 +107,41 @@ class DSAPI(Resource):
             db.session.rollback()
             return {"message": f"error {exception}"}, 500
 
+class DSCOVID(Resource):
+    def post(self):
+        try:
+            # Mock dataset - in a real scenario, you would load this from a CSV or database
+            covid_data = pd.DataFrame({
+                'new_cases': [100, 500, 1000],
+                'total_cases': [1000, 5000, 10000],
+                'recovery_rate': [0.8, 0.5, 0.3],
+                'vaccination_rate': [0.7, 0.6, 0.4],
+                'risk_level': [0, 1, 2]  # 0=Low, 1=Medium, 2=High
+            })
+            # Split the data into features and target
+            X = covid_data.drop('risk_level', axis=1)
+            y = covid_data['risk_level']
+
+            # Train the logistic regression model
+            logreg = LogisticRegression()
+            logreg.fit(X, y)
+
+            data = request.get_json()
+            country_data = pd.DataFrame([data])
+                    
+            # Predict the risk level for the provided country data
+            risk_level_pred = logreg.predict(country_data)
+            risk_level_proba = logreg.predict_proba(country_data)
+            
+            # Decode the risk level
+            risk_levels = {0: 'Low', 1: 'Medium', 2: 'High'}
+            risk_level = risk_levels[risk_level_pred[0]]
+            
+            # define variable to return
+            highrisk = risk_level_proba[0][2] * 100
+            return highrisk
+        except Exception as e:
+            return {'error': str(e)}, 400
+
 ds_api.add_resource(DSAPI, "/")
+ds_api.add_resource(DSCOVID, "/risk")
