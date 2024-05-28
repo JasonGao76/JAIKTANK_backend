@@ -46,6 +46,12 @@ permalink: /arthurjasonproject
         #aquamarine {
             background-color: #7FFFD4;
         }
+        #blueviolet {
+            background-color: #8A2BE2;
+        }
+        #lightcoral {
+            background-color: #F08080;
+        }
     </style>
 </head>
 
@@ -82,8 +88,8 @@ permalink: /arthurjasonproject
             <div class="buttons">
                 <button id="mistyrose" class="smallbox">Misty Rose</button>
                 <button id="aquamarine" class="smallbox">Aquamarine</button>
-                <button id="" class="smallbox">3</button>
-                <button id="" class="smallbox">4</button>
+                <button id="blueviolet" class="smallbox">Blue Violet</button>
+                <button id="lightcoral" class="smallbox">Light Coral</button>
             </div>
         <!-- </div> -->
     </div>
@@ -248,6 +254,12 @@ permalink: /arthurjasonproject
         }
         else if (buttonid === "aquamarine") {
             color = "#7FFFD4";
+        }
+        else if (buttonid === "blueviolet") {
+            color = "#8A2BE2";
+        }
+        else if (buttonid === "lightcoral") {
+            color = "#F08080";
         }
         matrix = document.querySelector('#tablematrix table');
         Array.from(matrix.rows).forEach((row, rowIndex) => {
