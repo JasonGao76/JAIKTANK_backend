@@ -76,7 +76,7 @@ class DSAPI(Resource):
         print('DecisionTreeClassifier Accuracy: {:.2%}'.format(accuracy))  
 
         # Train a logistic regression model
-        logreg = LogisticRegression()
+        logreg = LogisticRegression(max_iter=10000)
         logreg.fit(X_train, y_train)
 
         # Test the model
@@ -105,7 +105,7 @@ class DSAPI(Resource):
             return alive_proba
         except Exception as exception:
             db.session.rollback()
-            return {"message": f"error {exception}"}, 500
+            print(exception)
 
 class DSCOVID(Resource):
     def post(self):
